@@ -1,0 +1,21 @@
+# BUK-14 workstation audit
+generated_at: 2026-11-13T08:58:40Z
+github_user: helenefebe
+whoami: helen
+id: uid=1000(helen) gid=1000(helen) groups=1000(helen),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),100(users)
+uname: Linux 6.18.58.1-microsoft-standard-WSL2
+git_identity: Helen Efebe (email set)
+origin: git@github.com:helenefebe/bukka.git
+upstream: git@github.com:alamz-tech/bukka.git
+branch: buk-14-workstation-setup
+fails: 0
+
+PASS  Working as a normal user (helen)
+PASS  User can use sudo (member of an admin group)
+PASS  Private key id_ed25519 is readable only by you (600)
+PASS  ~/.ssh is private (700)
+PASS  GitHub recognises your SSH key as @helenefebe
+PASS  Git identity set (Helen Efebe, email set)
+PASS  origin is your fork over SSH (git@github.com:helenefebe/bukka.git)
+PASS  upstream points to alamz-tech/bukka
+PASS  On a BUK-14 branch (buk-14-workstation-setup)
