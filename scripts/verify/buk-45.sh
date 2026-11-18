@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BUK-45 verify: a private PostgreSQL server for the API, and the AWS side on
-# LocalStack. Run from the root of your bukka clone, with LocalStack,
+# Floci. Run from the root of your bukka clone, with Floci,
 # bukka-api-1 and bukka-orders-db running:
 #   bash scripts/verify/buk-45.sh
 # Writes artifacts/buk-45-data-audit.txt.
@@ -146,12 +146,12 @@ fi
 rm -rf "$STUB"
 [ -f infra/cli/buk-45.sh ] && pass "infra/cli/buk-45.sh exists" || fail "infra/cli/buk-45.sh exists"
 
-# --- The AWS side (LocalStack) --------------------------------------------------
-echo; echo "The AWS side (LocalStack at $AWS_ENDPOINT_URL)"
+# --- The AWS side (Floci) --------------------------------------------------
+echo; echo "The AWS side (Floci at $AWS_ENDPOINT_URL)"
 if ! aws sts get-caller-identity >/dev/null 2>&1; then
-  fail "LocalStack is answering" "Start LocalStack (see the ticket's Notes)."
+  fail "Floci is answering" "Start Floci (see the ticket's Notes)."
 else
-  pass "LocalStack is answering"
+  pass "Floci is answering"
   VPC=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=bukka-prod-vpc --query 'Vpcs[0].VpcId' --output text 2>/dev/null)
   WEB_SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=bukka-web-sg Name=vpc-id,Values="$VPC" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
   DBSG_JSON=$(aws ec2 describe-security-groups --filters Name=group-name,Values=bukka-db-sg Name=vpc-id,Values="$VPC" --query 'SecurityGroups[0]' --output json 2>/dev/null)

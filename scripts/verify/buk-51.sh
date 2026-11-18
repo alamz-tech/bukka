@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# BUK-51 verify: production on LocalStack, built and managed by Terraform.
-# Run from the root of your bukka clone, with LocalStack running and the
+# BUK-51 verify: production on Floci, built and managed by Terraform.
+# Run from the root of your bukka clone, with Floci running and the
 # stack applied (terraform init + terraform apply in infra/terraform):
 #   bash scripts/verify/buk-51.sh
 # Writes artifacts/buk-51-terraform-audit.txt. It never changes your
@@ -116,10 +116,10 @@ if [ -f "$TF/backend.tf" ] && grep -qE 'backend[[:space:]]+"s3"' "$TF/backend.tf
 else
   fail "backend.tf uses the s3 backend with use_lockfile = true" "terraform { backend \"s3\" { bucket = \"bukka-tfstate-<you>\" ... use_lockfile = true } }"
 fi
-if [ -f "$TF/backend.tf" ] && ! grep -vE '^[[:space:]]*(#|//)' "$TF/backend.tf" | grep -qiE 'localhost|localstack|4566'; then
-  pass "backend.tf has no LocalStack settings (they go in a -backend-config file)"
+if [ -f "$TF/backend.tf" ] && ! grep -vE '^[[:space:]]*(#|//)' "$TF/backend.tf" | grep -qiE 'localhost|localstack|floci|4566'; then
+  pass "backend.tf has no Floci settings (they go in a -backend-config file)"
 else
-  fail "backend.tf has no LocalStack settings (they go in a -backend-config file)" "Move endpoints and skip_* settings into backend-localstack.hcl and pass it to terraform init."
+  fail "backend.tf has no Floci settings (they go in a -backend-config file)" "Move endpoints and skip_* settings into backend-floci.hcl and pass it to terraform init."
 fi
 
 # --- Code quality -----------------------------------------------------------------
@@ -166,10 +166,10 @@ check "infra/cli/buk-38.sh, buk-42.sh and buk-45.sh are removed" "git rm$OLD" [ 
 check "infra/db/orders-db.sh is kept" "Terraform only manages the AWS side. Keep the BUK-45 database script." [ -f infra/db/orders-db.sh ]
 
 # --- Remote state ---------------------------------------------------------------------
-echo; echo "Remote state (LocalStack at $AWS_ENDPOINT_URL)"
+echo; echo "Remote state (Floci at $AWS_ENDPOINT_URL)"
 LS_UP=""
-if awsq sts get-caller-identity >/dev/null; then pass "LocalStack is answering"; LS_UP=1; else
-  fail "LocalStack is answering" "Start LocalStack (see the ticket's Notes)."; fi
+if awsq sts get-caller-identity >/dev/null; then pass "Floci is answering"; LS_UP=1; else
+  fail "Floci is answering" "Start Floci (see the ticket's Notes)."; fi
 BE_BUCKET=$(sed -nE 's/^[[:space:]]*bucket[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$TF/backend.tf" 2>/dev/null | head -1)
 BE_KEY=$(sed -nE 's/^[[:space:]]*key[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$TF/backend.tf" 2>/dev/null | head -1)
 STATE_BUCKET=""
@@ -195,14 +195,14 @@ if [ -n "$STATE_BUCKET" ]; then
   fi
 fi
 
-# --- What's in LocalStack ------------------------------------------------------------
+# --- What's in Floci ------------------------------------------------------------
 if [ -n "$LS_UP" ]; then
 echo; echo "The network (BUK-42)"
 VPC_COUNT=$(awsq ec2 describe-vpcs --filters Name=tag:Name,Values=bukka-prod-vpc --query 'length(Vpcs)' --output text)
 VPC=$(awsq ec2 describe-vpcs --filters Name=tag:Name,Values=bukka-prod-vpc Name=cidr,Values=10.0.0.0/16 --query 'Vpcs[0].VpcId' --output text)
 [ "$VPC" = "None" ] && VPC=""
 if [ "$VPC_COUNT" = "1" ] && [ -n "$VPC" ]; then pass "Exactly one bukka-prod-vpc, 10.0.0.0/16"; else
-  fail "Exactly one bukka-prod-vpc, 10.0.0.0/16" "Found ${VPC_COUNT:-0} VPCs named bukka-prod-vpc. Start from a fresh LocalStack and terraform apply."; fi
+  fail "Exactly one bukka-prod-vpc, 10.0.0.0/16" "Found ${VPC_COUNT:-0} VPCs named bukka-prod-vpc. Start from a fresh Floci and terraform apply."; fi
 
 if [ -n "$VPC" ]; then
   awsq ec2 describe-subnets --filters Name=vpc-id,Values="$VPC" --output json > "$WORK"/subnets.json
@@ -416,9 +416,9 @@ if [ -n "$INITED" ] && [ -n "$LS_UP" ]; then
     fail "terraform plan shows no changes" "terraform plan failed: $(grep -m1 -iE 'error' "$WORK/plan.txt" | head -c 200)"
   fi
 else
-  fail "Every module has resources in the Terraform state" "Needs terraform init and LocalStack."
-  fail "Outputs give the VPC ID, API server ID, bukka-db-sg ID and bucket name" "Needs terraform init and LocalStack."
-  fail "terraform plan shows no changes" "Needs terraform init and LocalStack."
+  fail "Every module has resources in the Terraform state" "Needs terraform init and Floci."
+  fail "Outputs give the VPC ID, API server ID, bukka-db-sg ID and bucket name" "Needs terraform init and Floci."
+  fail "terraform plan shows no changes" "Needs terraform init and Floci."
 fi
 
 # --- Branch and identity ------------------------------------------------------------------

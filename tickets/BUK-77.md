@@ -39,7 +39,7 @@ do if something went wrong. You've done the hard part already.
 ### Bring it all together
 
 1. **Infrastructure:** your Terraform from BUK-51 still applies cleanly to
-   LocalStack, and running `terraform plan` straight afterwards shows no
+   Floci, and running `terraform plan` straight afterwards shows no
    changes. Save that second plan:
    `terraform plan -no-color | tee artifacts/buk-77-terraform-plan.txt`.
 2. **Images:** every image running in your cluster was built by your

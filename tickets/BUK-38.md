@@ -36,7 +36,7 @@ for one promise: no surprise AWS bills.
 
 ## Acceptance criteria
 
-All of this runs on **LocalStack**, AWS simulated in Docker on your machine.
+All of this runs on **Floci**, AWS simulated in Docker on your machine.
 No AWS account, no credit card, no bill. See the Notes for setup.
 
 ### The bucket
@@ -81,7 +81,7 @@ No AWS account, no credit card, no bill. See the Notes for setup.
 ### Write it down
 
 10. Save every command you ran, in order, in `infra/cli/buk-38.sh`, so you
-    (or a teammate) can rebuild all of this on a fresh LocalStack with one
+    (or a teammate) can rebuild all of this on a fresh Floci with one
     command. You will need this in BUK-42 and BUK-45.
 11. In your pull request description, add a short design note under
     **Anything the reviewer should look at closely?** (a few sentences each):
@@ -93,7 +93,7 @@ No AWS account, no credit card, no bill. See the Notes for setup.
 
 12. Work on a branch called `buk-38-api-server-photo-access`, created from
     `upstream/apprentice/<your-github-username>`.
-13. With LocalStack running and your resources created, run
+13. With Floci running and your resources created, run
     `bash scripts/verify/buk-38.sh`. It writes
     `artifacts/buk-38-iam-audit.txt`.
 14. Commit the audit file and `infra/cli/buk-38.sh`, push, and open a pull
@@ -118,11 +118,11 @@ No AWS account, no credit card, no bill. See the Notes for setup.
   rest of the account. This is called least privilege.
 - **Why us-east-1?** AWS only publishes billing metrics in `us-east-1`, so
   we keep everything in that one region for now.
-- **Starting LocalStack** (version pinned: newer images need a LocalStack
-  account):
+- **Starting Floci** (a free, open-source AWS emulator: no account, no
+  token; the version is pinned so everyone gets the same behaviour):
   ```bash
-  docker run --rm -d --name localstack -p 4566:4566 \
-    -v /var/run/docker.sock:/var/run/docker.sock localstack/localstack:4.14.0
+  docker run --rm -d --name floci -p 4566:4566 \
+    -v /var/run/docker.sock:/var/run/docker.sock floci/floci:2.5.0
   ```
 - **Pointing the AWS CLI at it:**
   ```bash
@@ -130,15 +130,15 @@ No AWS account, no credit card, no bill. See the Notes for setup.
   export AWS_ACCESS_KEY_ID=test
   export AWS_SECRET_ACCESS_KEY=test
   export AWS_DEFAULT_REGION=us-east-1
-  aws sts get-caller-identity   # should answer from LocalStack
+  aws sts get-caller-identity   # should answer from Floci
   ```
-  `test` / `test` are LocalStack's dummy keys. They live in your shell only,
+  `test` / `test` are dummy keys: Floci accepts any. They live in your shell only,
   never on the server and never in the repo.
-- LocalStack forgets everything when it stops. That's why you save your
+- Floci forgets everything when it stops. That's why you save your
   commands in `infra/cli/buk-38.sh`: run it again and you're back. Run it on
-  a fresh LocalStack: running it twice launches a second `bukka-api-1`, and
+  a fresh Floci: running it twice launches a second `bukka-api-1`, and
   the verify script expects exactly one.
-- LocalStack accepts the AMI IDs it lists with `aws ec2 describe-images`.
+- Floci accepts the AMI IDs it lists with `aws ec2 describe-images`.
   The instance is simulated, so you won't SSH into it. The verify script
   checks how it's configured.
 - Useful commands: `aws iam create-role`, `aws iam put-role-policy`,

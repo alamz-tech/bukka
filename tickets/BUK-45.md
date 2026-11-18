@@ -45,7 +45,7 @@ There are two halves, both on your machine, no AWS account and no bill:
   would build it on your own servers, and it's what RDS does for you in
   AWS (see the table in `labs/buk-45/README.md`).
 - **The AWS side** (the database's security group and the photos bucket)
-  runs on **LocalStack**, like BUK-38 and BUK-42.
+  runs on **Floci**, like BUK-38 and BUK-42.
 
 ### Get the API server
 
@@ -94,9 +94,9 @@ There are two halves, both on your machine, no AWS account and no bill:
 9. Replace the database container (`docker rm -f bukka-orders-db`, then run
    your script again). The restaurants are still there.
 
-### The AWS side (LocalStack)
+### The AWS side (Floci)
 
-10. Rebuild BUK-38 and BUK-42 on a fresh LocalStack with your scripts. Then
+10. Rebuild BUK-38 and BUK-42 on a fresh Floci with your scripts. Then
     create `bukka-web-sg` in `bukka-prod-vpc` (same rules as BUK-38; a
     security group belongs to one VPC).
 11. Create a security group called `bukka-db-sg` in `bukka-prod-vpc` that
@@ -131,7 +131,7 @@ There are two halves, both on your machine, no AWS account and no bill:
 
 16. Work on a branch called `buk-45-private-db-and-s3`, created from
     `upstream/apprentice/<your-github-username>`.
-17. With LocalStack, `bukka-api-1` and `bukka-orders-db` all running, run
+17. With Floci, `bukka-api-1` and `bukka-orders-db` all running, run
     `bash scripts/verify/buk-45.sh`. It writes
     `artifacts/buk-45-data-audit.txt`.
 18. Commit `infra/` and the audit file, push, and open a pull request into
@@ -177,11 +177,11 @@ There are two halves, both on your machine, no AWS account and no bill:
   ```
   Find the database's address with
   `docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' bukka-orders-db`.
-- **Starting LocalStack** (version pinned: newer images need a LocalStack
-  account):
+- **Starting Floci** (a free, open-source AWS emulator: no account, no
+  token; the version is pinned so everyone gets the same behaviour):
   ```bash
-  docker run --rm -d --name localstack -p 4566:4566 \
-    -v /var/run/docker.sock:/var/run/docker.sock localstack/localstack:4.14.0
+  docker run --rm -d --name floci -p 4566:4566 \
+    -v /var/run/docker.sock:/var/run/docker.sock floci/floci:2.5.0
   ```
 - **Pointing the AWS CLI at it:**
   ```bash

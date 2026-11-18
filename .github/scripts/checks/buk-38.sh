@@ -14,7 +14,7 @@ bad() { echo "::error::$1"; echo "✗ $1"; FAILS=$((FAILS + 1)); }
 lc()  { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 TICKET_N=$(basename "$0" .sh)
 
-[ -f "$F" ] || { bad "$F is missing. Run 'bash scripts/verify/$TICKET_N.sh' with LocalStack running and commit what it writes."; exit 1; }
+[ -f "$F" ] || { bad "$F is missing. Run 'bash scripts/verify/$TICKET_N.sh' with Floci running and commit what it writes."; exit 1; }
 ok "$F is present"
 
 if grep -q '^FAIL' "$F"; then
@@ -33,7 +33,7 @@ if [ ! -f "$S" ]; then
 else
   [ "$(sha256sum "$S" | cut -d' ' -f1)" = "$(sed -n 's/^script_sha256: //p' "$F")" ] \
     && ok "$S is the version that was audited" \
-    || bad "$S changed after the audit. Rebuild on a fresh LocalStack with it, run the verify script again and commit the new audit."
+    || bad "$S changed after the audit. Rebuild on a fresh Floci with it, run the verify script again and commit the new audit."
   if grep -nE 'create-access-key' "$S"; then
     bad "$S creates an access key. The server gets its access from the instance profile, not a key."
   else

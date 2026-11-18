@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # BUK-42 verify: the production VPC, its public and private subnets in two
-# availability zones, and the route tables, on LocalStack. Run from the root
-# of your bukka clone, with LocalStack running and your network created:
+# availability zones, and the route tables, on Floci. Run from the root
+# of your bukka clone, with Floci running and your network created:
 #   bash scripts/verify/buk-42.sh
 # Writes artifacts/buk-42-network-audit.txt.
 
@@ -29,12 +29,12 @@ fi
 echo "== $TICKET verify =="
 echo
 
-echo "LocalStack at $AWS_ENDPOINT_URL"
+echo "Floci at $AWS_ENDPOINT_URL"
 VPC=""
 if ! aws sts get-caller-identity >/dev/null 2>&1; then
-  fail "LocalStack is answering" "Start LocalStack and point the AWS CLI at it (see the ticket's Notes)."
+  fail "Floci is answering" "Start Floci and point the AWS CLI at it (see the ticket's Notes)."
 else
-  pass "LocalStack is answering"
+  pass "Floci is answering"
 
   # --- The VPC ----------------------------------------------------------------
   echo; echo "The VPC"
@@ -44,7 +44,7 @@ else
     fail "One VPC tagged Name=bukka-prod-vpc" "aws ec2 create-vpc --cidr-block 10.0.0.0/16 --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=bukka-prod-vpc}]'"
   else
     if [ "$N_VPC" = "1" ]; then pass "One VPC tagged Name=bukka-prod-vpc"; else
-      fail "One VPC tagged Name=bukka-prod-vpc" "Found $N_VPC (did you run your script twice?). Restart LocalStack and run it once."; fi
+      fail "One VPC tagged Name=bukka-prod-vpc" "Found $N_VPC (did you run your script twice?). Restart Floci and run it once."; fi
     read -r VPC VPC_CIDR <<< "$(printf '%s\n' "$VPCS" | head -1)"
     [ "$VPC_CIDR" = "10.0.0.0/16" ] && pass "bukka-prod-vpc is 10.0.0.0/16" || fail "bukka-prod-vpc is 10.0.0.0/16" "It's $VPC_CIDR."
   fi
@@ -159,7 +159,7 @@ PY
 )
   rm -rf "$DIR"
   if ! printf '%s\n' "$CHECKS" | grep -q '^PASS|\|^FAIL|'; then
-    fail "Could read the network from LocalStack" "$(printf '%s' "$CHECKS" | tail -3)"
+    fail "Could read the network from Floci" "$(printf '%s' "$CHECKS" | tail -3)"
   fi
   echo; echo "Subnets and routing"
   while IFS='|' read -r R NAME HINT; do

@@ -36,7 +36,7 @@ else moves to AWS.
 
 ## Acceptance criteria
 
-All of this runs on **LocalStack**, AWS simulated in Docker on your machine.
+All of this runs on **Floci**, AWS simulated in Docker on your machine.
 No AWS account, no credit card, no bill. See the Notes for setup.
 
 ### The VPC
@@ -74,7 +74,7 @@ No AWS account, no credit card, no bill. See the Notes for setup.
 ### Write it down
 
 8. Save every command you ran, in order, in `infra/cli/buk-42.sh`, so the
-   network can be rebuilt on a fresh LocalStack with one command.
+   network can be rebuilt on a fresh Floci with one command.
 9. In your pull request description, under **Anything the reviewer should
    look at closely?**, add:
    - A simple diagram of the network (ASCII art or a picture is fine) showing
@@ -88,7 +88,7 @@ No AWS account, no credit card, no bill. See the Notes for setup.
 
 10. Work on a branch called `buk-42-production-network`, created from
     `upstream/apprentice/<your-github-username>`.
-11. With LocalStack running and your network created, run
+11. With Floci running and your network created, run
     `bash scripts/verify/buk-42.sh`. It writes
     `artifacts/buk-42-network-audit.txt`.
 12. Commit the audit file and `infra/cli/buk-42.sh`, push, and open a pull
@@ -116,11 +116,11 @@ No AWS account, no credit card, no bill. See the Notes for setup.
   centre in the same region. AWS requires a database subnet group to cover
   at least two of them, and it means one data centre failing doesn't have
   to mean Bukka is down.
-- **Starting LocalStack** (version pinned: newer images need a LocalStack
-  account):
+- **Starting Floci** (a free, open-source AWS emulator: no account, no
+  token; the version is pinned so everyone gets the same behaviour):
   ```bash
-  docker run --rm -d --name localstack -p 4566:4566 \
-    -v /var/run/docker.sock:/var/run/docker.sock localstack/localstack:4.14.0
+  docker run --rm -d --name floci -p 4566:4566 \
+    -v /var/run/docker.sock:/var/run/docker.sock floci/floci:2.5.0
   ```
 - **Pointing the AWS CLI at it:**
   ```bash
@@ -129,8 +129,8 @@ No AWS account, no credit card, no bill. See the Notes for setup.
   export AWS_SECRET_ACCESS_KEY=test
   export AWS_DEFAULT_REGION=us-east-1
   ```
-- LocalStack forgets everything when it stops, so keep `infra/cli/buk-42.sh`
-  up to date. Run it once on a fresh LocalStack: running it twice creates a
+- Floci forgets everything when it stops, so keep `infra/cli/buk-42.sh`
+  up to date. Run it once on a fresh Floci: running it twice creates a
   second `bukka-prod-vpc`, and the verify script expects exactly one. Tip: capture IDs into variables as you go, e.g.
   `VPC_ID=$(aws ec2 create-vpc ... --query Vpc.VpcId --output text)`.
 - Useful commands: `aws ec2 create-vpc`, `aws ec2 create-subnet`,

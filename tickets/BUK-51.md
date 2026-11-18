@@ -36,7 +36,7 @@ That's how outages and surprise bills start.
 
 ## Acceptance criteria
 
-All of this runs on **LocalStack**, AWS simulated in Docker on your machine.
+All of this runs on **Floci**, AWS simulated in Docker on your machine.
 No AWS account, no credit card, no bill. See the Notes for setup.
 
 ### Project layout
@@ -89,7 +89,7 @@ No AWS account, no credit card, no bill. See the Notes for setup.
 8. `terraform fmt -check -recursive` and `terraform validate` both pass.
    Use Terraform **1.11 or newer** (`use_lockfile` needs it) and say so
    with `required_version` in `versions.tf`.
-9. On a fresh LocalStack, save the plan to a file and commit it:
+9. On a fresh Floci, save the plan to a file and commit it:
    `terraform plan -no-color > artifacts/buk-51-terraform-plan.txt`. In your
    pull request description, quote only the `Plan: N to add` line and say in
    a sentence what you'd want a reviewer to check. A teammate reviews the
@@ -116,7 +116,7 @@ No AWS account, no credit card, no bill. See the Notes for setup.
 
 15. Work on a branch called `buk-51-terraform-production`, created from
     `upstream/apprentice/<your-github-username>`.
-16. With LocalStack running and the stack applied, run
+16. With Floci running and the stack applied, run
     `bash scripts/verify/buk-51.sh`. It writes
     `artifacts/buk-51-terraform-audit.txt`.
 17. Commit the audit file and your Terraform code, push, and open a pull
@@ -144,11 +144,11 @@ No AWS account, no credit card, no bill. See the Notes for setup.
 - **Why remote state?** State is Terraform's memory of what it built. On
   one laptop it's lost when the laptop is, and two people applying at once
   can corrupt it. A shared, versioned, locked bucket fixes both.
-- **Starting LocalStack** (version pinned: newer images need a LocalStack
-  account):
+- **Starting Floci** (a free, open-source AWS emulator: no account, no
+  token; the version is pinned so everyone gets the same behaviour):
   ```bash
-  docker run --rm -d --name localstack -p 4566:4566 \
-    -v /var/run/docker.sock:/var/run/docker.sock localstack/localstack:4.14.0
+  docker run --rm -d --name floci -p 4566:4566 \
+    -v /var/run/docker.sock:/var/run/docker.sock floci/floci:2.5.0
   ```
 - **Pointing Terraform at it:**
   ```bash
@@ -159,18 +159,18 @@ No AWS account, no credit card, no bill. See the Notes for setup.
   ```
   Then, in the provider block, add `s3_use_path_style = true`,
   `skip_credentials_validation = true` and
-  `skip_requesting_account_id = true`. For the backend, keep the LocalStack
+  `skip_requesting_account_id = true`. For the backend, keep the Floci
   settings in a separate file and pass it at init, so `backend.tf` stays
   the same for real AWS:
   ```hcl
-  # backend-localstack.hcl
+  # backend-floci.hcl
   endpoints                   = { s3 = "http://localhost:4566" }
   use_path_style              = true
   skip_credentials_validation = true
   skip_requesting_account_id  = true
   ```
   ```bash
-  terraform init -backend-config=backend-localstack.hcl
+  terraform init -backend-config=backend-floci.hcl
   ```
   `tflocal` (from `pip install terraform-local`) can do this wiring for
   you if you prefer.
@@ -179,13 +179,12 @@ No AWS account, no credit card, no bill. See the Notes for setup.
   git) and commit a `terraform.tfvars.example` so a teammate knows what to
   fill in. The one exception is the state bucket name in `backend.tf`:
   backends can't read variables.
-- **AMI:** LocalStack accepts the AMI IDs it lists with
-  `aws ec2 describe-images`, e.g. `ami-ff0fea8310f3`. Make it a variable
-  with a default.
+- **AMI:** Floci accepts the AMI IDs it lists with
+  `aws ec2 describe-images`; pick one. Make it a variable with a default.
 - **No tags on the CloudWatch alarm** (and no `default_tags` in the
-  provider, which would add them): LocalStack 4.14 can't read back an
-  alarm that has tags, and `terraform apply` hangs on it. Tag everything
-  else directly if you like.
+  provider, which would add them): local emulators can struggle to read back
+  an alarm that has tags, and `terraform apply` can hang on it. Tag
+  everything else directly if you like.
 - Start small: get the network module planning and applying first, then
   add one module at a time.
 - Useful commands: `terraform init`, `terraform fmt -recursive`,

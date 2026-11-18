@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # BUK-38 verify: an IAM role (not a key) for the API server, a tight security
-# group, and a billing alarm, all on LocalStack. Run from the root of your
-# bukka clone, with LocalStack running and your resources created:
+# group, and a billing alarm, all on Floci. Run from the root of your
+# bukka clone, with Floci running and your resources created:
 #   bash scripts/verify/buk-38.sh
 # Writes artifacts/buk-38-iam-audit.txt.
 
@@ -40,12 +40,12 @@ GH_OUT=$(ssh -T -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=a
 [[ "$GH_OUT" =~ Hi\ ([A-Za-z0-9-]+)! ]] && GH_USER="${BASH_REMATCH[1]}"
 
 BUCKET=""
-echo "LocalStack at $AWS_ENDPOINT_URL"
+echo "Floci at $AWS_ENDPOINT_URL"
 if ! aws sts get-caller-identity >/dev/null 2>&1; then
-  fail "LocalStack is answering" "Start LocalStack and point the AWS CLI at it (see the ticket's Notes)."
+  fail "Floci is answering" "Start Floci and point the AWS CLI at it (see the ticket's Notes)."
   LS_UP=""
 else
-  pass "LocalStack is answering"; LS_UP=1
+  pass "Floci is answering"; LS_UP=1
 fi
 
 if [ -n "$LS_UP" ]; then

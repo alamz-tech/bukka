@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BUK-51 checks on the pull request: the audit, that the committed Terraform
-# is the code that was audited, and the checks that need no LocalStack
+# is the code that was audited, and the checks that need no Floci
 # (git hygiene, secrets, terraform fmt and validate).
 
 set -uo pipefail
@@ -111,7 +111,7 @@ else
   ok "No passwords, secret defaults or access keys in infra/"
 fi
 
-# --- terraform fmt and validate (no LocalStack, no backend) -----------------------------
+# --- terraform fmt and validate (no Floci, no backend) -----------------------------
 if ! command -v terraform >/dev/null 2>&1; then
   case "$(uname -m)" in x86_64|amd64) ARCH=amd64;; aarch64|arm64) ARCH=arm64;; *) ARCH=amd64;; esac
   OS=$(uname -s | tr '[:upper:]' '[:lower:]')
