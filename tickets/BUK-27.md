@@ -7,6 +7,7 @@
 | **Epic** | BUK-1 Platform foundations |
 | **Month** | 1 |
 | **Sprint** | 3 |
+| **Skills** | systemd, nginx |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of the week |

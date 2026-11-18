@@ -7,6 +7,7 @@
 | **Epic** | BUK-1 Platform foundations |
 | **Month** | 1 |
 | **Sprint** | 2 |
+| **Skills** | network-troubleshooting, firewalls, dns, runbooks |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You (on call) |
 | **Due** | End of the week |

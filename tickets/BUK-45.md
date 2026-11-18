@@ -7,6 +7,7 @@
 | **Epic** | BUK-2 Move to the cloud |
 | **Month** | 2 |
 | **Sprint** | 7 |
+| **Skills** | postgresql, network-isolation, aws-s3 |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of sprint 7 |

@@ -7,6 +7,7 @@
 | **Epic** | BUK-1 Platform foundations |
 | **Month** | 1 |
 | **Sprint** | 4 |
+| **Skills** | bash, python, cron, log-analysis |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of the week |

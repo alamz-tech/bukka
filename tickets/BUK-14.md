@@ -6,6 +6,7 @@
 | **Priority** | High |
 | **Epic** | BUK-1 Platform foundations |
 | **Month** | 1 |
+| **Skills** | git, github, ssh, linux-users |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of your first week |

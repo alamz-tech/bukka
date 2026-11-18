@@ -7,6 +7,7 @@
 | **Epic** | BUK-2 Move to the cloud |
 | **Month** | 2 |
 | **Sprint** | 5 |
+| **Skills** | aws-iam, aws-s3, cloud-costs |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of sprint 5 |

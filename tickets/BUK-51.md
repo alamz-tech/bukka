@@ -7,6 +7,7 @@
 | **Epic** | BUK-2 Move to the cloud |
 | **Month** | 2 |
 | **Sprint** | 8 |
+| **Skills** | terraform |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of sprint 8 |

@@ -7,6 +7,7 @@
 | **Epic** | BUK-3 Containers and continuous delivery |
 | **Month** | 3 |
 | **Sprint** | 12 |
+| **Skills** | release-readiness, rollbacks, load-testing |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of Sprint 12 |
