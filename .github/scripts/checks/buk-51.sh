@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BUK-51 checks on the pull request: the audit, that the committed Terraform
-# is the code that was audited, and the checks that need no Floci
+# is the code that was audited, and the checks that need no floci-gcp
 # (git hygiene, secrets, terraform fmt and validate).
 
 set -uo pipefail
@@ -65,12 +65,12 @@ else
 fi
 
 for s in buk-38 buk-42 buk-45; do
-  [ -e "infra/cli/$s.sh" ] && bad "infra/cli/$s.sh should be removed: Terraform is now the only way the AWS side is built."
+  [ -e "infra/cli/$s.sh" ] && bad "infra/cli/$s.sh should be removed: Terraform is now the only way the Google Cloud side is built."
 done
 [ -f infra/db/orders-db.sh ] && ok "infra/db/orders-db.sh is kept" || bad "Keep infra/db/orders-db.sh from BUK-45."
 
-grep -qE 'use_lockfile[[:space:]]*=[[:space:]]*true' "$TF/backend.tf" 2>/dev/null \
-  && ok "The backend locks state (use_lockfile = true)" || bad "backend.tf should set use_lockfile = true."
+grep -qE 'backend[[:space:]]+"gcs"' "$TF/backend.tf" 2>/dev/null \
+  && ok "State lives in the gcs backend (it locks state for you)" || bad "backend.tf should use the gcs backend: terraform { backend \"gcs\" { ... } }"
 
 # --- Secrets ----------------------------------------------------------------------------
 SCAN_FILES=$( { find infra -type f \( -name '*.tf' -o -name '*.hcl' -o -name '*.tfvars' -o -name '*.tfvars.json' -o -name '*.sh' \) -not -path '*/.terraform/*' 2>/dev/null; echo "$TRACKED" | grep -E '\.tfvars(\.json)?$'; } | sort -u)
@@ -78,7 +78,7 @@ SCAN_FILES=$( { find infra -type f \( -name '*.tf' -o -name '*.hcl' -o -name '*.
 LEAKS=$(python3 - $SCAN_FILES <<'PY'
 import re, sys
 bad = []
-assign = re.compile(r'^\s*"?([A-Za-z0-9_]*(password|passwd|secret|token|access_key|private_key)[A-Za-z0-9_]*)"?\s*=\s*"([^"$]+)"', re.I)
+assign = re.compile(r'^\s*"?([A-Za-z0-9_]*(password|passwd|secret|token|access_key|private_key|credentials)[A-Za-z0-9_]*)"?\s*=\s*"([^"$]+)"', re.I)
 var = re.compile(r'variable\s+"([^"]+)"\s*\{', re.I)
 for path in sys.argv[1:]:
     try:
@@ -86,8 +86,8 @@ for path in sys.argv[1:]:
     except OSError:
         continue
     for n, line in enumerate(text.splitlines(), 1):
-        if re.search(r'AKIA[0-9A-Z]{16}', line):
-            bad.append(f"{path}:{n}: an AWS access key")
+        if re.search(r'-----BEGIN (RSA |EC )?PRIVATE KEY-----|"private_key(_id)?"\s*:|AIza[0-9A-Za-z_-]{35}', line):
+            bad.append(f"{path}:{n}: a private key or API key")
         m = assign.match(line)
         if m and not path.endswith(".sh") and not m.group(1).lower().startswith("skip_"):
             bad.append(f"{path}:{n}: {m.group(1)} is written in")
@@ -105,13 +105,13 @@ print("\n".join(bad))
 PY
 )
 if [ -n "$LEAKS" ]; then
-  bad "Secrets in infra/: no passwords, secret defaults or access keys in code. Pass secrets in at run time, and change any that were committed."
+  bad "Secrets in infra/: no passwords, secret defaults or keys in code. Pass secrets in at run time, and change any that were committed."
   echo "$LEAKS" | head -5 | sed 's/^/    /'
 else
-  ok "No passwords, secret defaults or access keys in infra/"
+  ok "No passwords, secret defaults or keys in infra/"
 fi
 
-# --- terraform fmt and validate (no Floci, no backend) -----------------------------
+# --- terraform fmt and validate (no floci-gcp, no backend) -----------------------------
 if ! command -v terraform >/dev/null 2>&1; then
   case "$(uname -m)" in x86_64|amd64) ARCH=amd64;; aarch64|arm64) ARCH=arm64;; *) ARCH=amd64;; esac
   OS=$(uname -s | tr '[:upper:]' '[:lower:]')
