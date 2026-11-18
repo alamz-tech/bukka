@@ -7,7 +7,7 @@ set -uo pipefail
 
 F="artifacts/buk-42-network-audit.txt"
 S="infra/cli/buk-42.sh"
-EXPECTED_PASSES=30
+EXPECTED_PASSES=14
 FAILS=0
 ok()  { echo "✓ $1"; }
 bad() { echo "::error::$1"; echo "✗ $1"; FAILS=$((FAILS + 1)); }

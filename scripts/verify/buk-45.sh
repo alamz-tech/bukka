@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# BUK-45 verify: a private PostgreSQL server for the API, and the AWS side on
-# Floci. Run from the root of your bukka clone, with Floci,
+# BUK-45 verify: a private PostgreSQL server for the API, and the Google Cloud
+# side on floci-gcp. Run from the root of your bukka clone, with floci-gcp,
 # bukka-api-1 and bukka-orders-db running:
 #   bash scripts/verify/buk-45.sh
 # Writes artifacts/buk-45-data-audit.txt.
@@ -14,10 +14,9 @@ URL="http://localhost:18082"
 OUT="artifacts/buk-45-data-audit.txt"
 FAILS=0
 RESULTS=()
-export AWS_ENDPOINT_URL="${AWS_ENDPOINT_URL:-http://localhost:4566}"
-export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
-export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
-export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../floci-gcp.env
+[ -f "$HERE/../floci-gcp.env" ] && source "$HERE/../floci-gcp.env"
 
 pass() { RESULTS+=("PASS  $1"); printf '  \033[32m✓\033[0m %s\n' "$1"; }
 fail() { RESULTS+=("FAIL  $1"); printf '  \033[31m✗\033[0m %s\n' "$1"; [ -n "${2:-}" ] && printf '      → %s\n' "$2"; FAILS=$((FAILS + 1)); }
@@ -146,48 +145,21 @@ fi
 rm -rf "$STUB"
 [ -f infra/cli/buk-45.sh ] && pass "infra/cli/buk-45.sh exists" || fail "infra/cli/buk-45.sh exists"
 
-# --- The AWS side (Floci) --------------------------------------------------
-echo; echo "The AWS side (Floci at $AWS_ENDPOINT_URL)"
-if ! aws sts get-caller-identity >/dev/null 2>&1; then
-  fail "Floci is answering" "Start Floci (see the ticket's Notes)."
+# --- The Google Cloud side (floci-gcp) ------------------------------------------
+echo; echo "The Google Cloud side (floci-gcp at $FLOCI_GCP)"
+BUCKET=""
+if ! curl -s -m 5 -o /dev/null -H 'Authorization: Bearer x' "$FLOCI_GCP/compute/v1/projects/$CLOUDSDK_CORE_PROJECT/global/networks"; then
+  fail "floci-gcp is answering" "Start floci-gcp and run: source scripts/floci-gcp.env (see the ticket's Notes)."
 else
-  pass "Floci is answering"
-  VPC=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=bukka-prod-vpc --query 'Vpcs[0].VpcId' --output text 2>/dev/null)
-  WEB_SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=bukka-web-sg Name=vpc-id,Values="$VPC" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
-  DBSG_JSON=$(aws ec2 describe-security-groups --filters Name=group-name,Values=bukka-db-sg Name=vpc-id,Values="$VPC" --query 'SecurityGroups[0]' --output json 2>/dev/null)
-  if [ -z "$VPC" ] || [ "$VPC" = "None" ] || [ -z "$WEB_SG" ] || [ "$WEB_SG" = "None" ]; then
-    fail "bukka-web-sg exists in bukka-prod-vpc" "Rebuild BUK-42, then create bukka-web-sg in that VPC."
-  else
-    pass "bukka-web-sg exists in bukka-prod-vpc"
-  fi
-  if [ -z "$DBSG_JSON" ] || [ "$DBSG_JSON" = "null" ]; then
-    fail "bukka-db-sg allows 5432 only from bukka-web-sg" "Create bukka-db-sg in bukka-prod-vpc."
-  else
-    VERDICT=$(WEB_SG="$WEB_SG" python3 -c '
-import json, os, sys
-perms = json.load(sys.stdin).get("IpPermissions", [])
-ok = (len(perms) == 1 and perms[0].get("IpProtocol") == "tcp" and perms[0].get("FromPort") == 5432
-      and perms[0].get("ToPort") == 5432 and not perms[0].get("IpRanges") and not perms[0].get("Ipv6Ranges")
-      and [g["GroupId"] for g in perms[0].get("UserIdGroupPairs", [])] == [os.environ["WEB_SG"]])
-print("ok" if ok else json.dumps(perms)[:200])' <<< "$DBSG_JSON")
-    [ "$VERDICT" = "ok" ] && pass "bukka-db-sg allows 5432 only from bukka-web-sg" \
-      || fail "bukka-db-sg allows 5432 only from bukka-web-sg" "Its inbound rules: $VERDICT"
-  fi
-
-  BUCKET=$(aws s3api list-buckets --query 'Buckets[].Name' --output text 2>/dev/null | tr '\t' '\n' | grep '^bukka-menu-photos-' | head -1)
-  if [ -z "$BUCKET" ]; then
-    fail "The menu photos bucket exists" "Rebuild BUK-38 with infra/cli/buk-38.sh."
-  else
-    pass "The menu photos bucket exists ($BUCKET)"
-    PAB=$(aws s3api get-public-access-block --bucket "$BUCKET" --query 'PublicAccessBlockConfiguration.[BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets]' --output text 2>/dev/null | tr -s '\t ' ' ')
-    [ "$PAB" = "True True True True" ] && pass "Block Public Access: all four on" \
-      || fail "Block Public Access: all four on" "Got: ${PAB:-not set}."
-    ENC=$(aws s3api get-bucket-encryption --bucket "$BUCKET" --query 'ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm' --output text 2>/dev/null)
-    [ "$ENC" = "AES256" ] && pass "Default encryption is SSE-S3 (AES256)" || fail "Default encryption is SSE-S3 (AES256)" "Got: ${ENC:-none}."
-    PHOTOS=$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix dishes/ --query 'length(Contents || `[]`)' --output text 2>/dev/null)
-    [ "${PHOTOS:-0}" -ge 3 ] 2>/dev/null && pass "At least three photos under dishes/ ($PHOTOS)" \
-      || fail "At least three photos under dishes/" "Found ${PHOTOS:-0}."
-  fi
+  pass "floci-gcp is answering"
+  GH_GUESS=$(ssh -T -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new git@github.com 2>&1 | sed -nE 's/^Hi ([A-Za-z0-9-]+)!.*/\1/p')
+  while IFS='|' read -r R NAME HINT; do
+    case "$R" in
+      BUCKET) BUCKET="$NAME" ;;
+      PASS) pass "$NAME" ;;
+      FAIL) fail "$NAME" "$HINT" ;;
+    esac
+  done < <(python3 "$HERE/buk45_check.py" "$GH_GUESS" 2>&1 || echo "FAIL|The checks ran to the end|python3 $HERE/buk45_check.py crashed")
 fi
 
 # --- Branch and identity --------------------------------------------------------
@@ -221,7 +193,7 @@ mkdir -p artifacts
 echo
 if [ "$FAILS" -eq 0 ]; then
   echo "All checks passed. Wrote $OUT."
-  echo "Next: git add infra/ $OUT && git commit -m \"feat: move orders to a private database and menu photos to S3 (BUK-45)\""
+  echo "Next: git add infra/ $OUT && git commit -m \"feat: move orders to a private database and menu photos to Cloud Storage (BUK-45)\""
   exit 0
 else
   echo "$FAILS check(s) failed. Fix the items marked ✗ and run this again."
