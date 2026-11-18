@@ -1,4 +1,4 @@
-# BUK-45: Move the orders database to a private server and menu photos to S3
+# BUK-45: Move the orders database to a private server and menu photos to Cloud Storage
 
 | | |
 |---|---|
@@ -7,7 +7,7 @@
 | **Epic** | BUK-2 Move to the cloud |
 | **Month** | 2 |
 | **Sprint** | 7 |
-| **Skills** | postgresql, network-isolation, aws-s3 |
+| **Skills** | postgresql, network-isolation, gcp-storage |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of sprint 7 |
@@ -28,24 +28,24 @@ menu changes. 😅
 - The orders move to PostgreSQL on its own server, on a private network
   where nothing on the internet can reach it and it can't reach the internet
   either. Only our API servers get in, and only over an encrypted connection.
-- The AWS side matches: a database security group that only lets the API
+- The Google Cloud side matches: a firewall rule that only lets the API
   servers in.
 - Menu photos move into the `bukka-menu-photos` bucket from BUK-38, private
-  and encrypted. The `Dish.photo_key` column in the API is already waiting
-  for them.
+  and recoverable. The `Dish.photo_key` column in the API is already
+  waiting for them.
 
 — Hussein Alamutu, Product Manager & Lead DevOps Engineer
 
 ## Acceptance criteria
 
-There are two halves, both on your machine, no AWS account and no bill:
+There are two halves, both on your machine, no Google account and no bill:
 
 - **The database** runs in Docker: a real PostgreSQL server on a private
   network, next to the API server from `labs/buk-45/`. This is how you
-  would build it on your own servers, and it's what RDS does for you in
-  AWS (see the table in `labs/buk-45/README.md`).
-- **The AWS side** (the database's security group and the photos bucket)
-  runs on **Floci**, like BUK-38 and BUK-42.
+  would build it on your own servers, and it's what Cloud SQL does for you
+  in Google Cloud (see the table in `labs/buk-45/README.md`).
+- **The Google Cloud side** (the database's firewall rule and the photos
+  bucket) runs on **floci-gcp**, like BUK-38 and BUK-42.
 
 ### Get the API server
 
@@ -94,49 +94,54 @@ There are two halves, both on your machine, no AWS account and no bill:
 9. Replace the database container (`docker rm -f bukka-orders-db`, then run
    your script again). The restaurants are still there.
 
-### The AWS side (Floci)
+### The Google Cloud side (floci-gcp)
 
-10. Rebuild BUK-38 and BUK-42 on a fresh Floci with your scripts. Then
-    create `bukka-web-sg` in `bukka-prod-vpc` (same rules as BUK-38; a
-    security group belongs to one VPC).
-11. Create a security group called `bukka-db-sg` in `bukka-prod-vpc` that
-    allows TCP `5432` **only** from the `bukka-web-sg` security group (use
-    the group as the source, not an IP range). No other inbound rules. This
-    is the AWS version of what `bukka-db-net` does for you in Docker.
-12. On `bukka-menu-photos-<your-github-username>`:
-    - turn on **Block Public Access**, all four settings
-    - turn on default encryption with **SSE-S3** (`AES256`)
+10. Rebuild BUK-38 and BUK-42 on a fresh floci-gcp with your scripts.
+11. Create a service account called `bukka-orders-db`: the identity the
+    database server will run as.
+12. Create a firewall rule called `bukka-db-allow-api` on `bukka-prod-vpc`
+    that allows TCP `5432` **only** from the `bukka-api-server` service
+    account (use the service account as the source, not an IP range or a
+    tag), to VMs running as `bukka-orders-db`. No other inbound rule may
+    reach the database. This is the Google Cloud version of what
+    `bukka-db-net` does for you in Docker.
+13. On `bukka-menu-photos-<your-github-username>`:
+    - uniform bucket-level access on (IAM only, no per-object ACLs)
+    - **public access prevention** enforced, so nobody can make it public
+      by accident
+    - **object versioning** on, so an overwritten or deleted photo can be
+      brought back
     - upload at least three dish photos under the `dishes/` prefix, e.g.
       `dishes/mama-put-yaba/jollof-rice.jpg`. Any small images will do
-13. Save these commands in `infra/cli/buk-45.sh`.
+14. Save these commands in `infra/cli/buk-45.sh`.
 
 ### Prove the database is private
 
-14. In your pull request description, show the evidence:
+15. In your pull request description, show the evidence:
     - `docker port bukka-orders-db` (it prints nothing)
     - `docker network inspect bukka-db-net --format '{{.Internal}}'`
     - a connection attempt from a container on `bukka-web-net` that **fails**,
       and the same attempt from `bukka-api-1` that **works**
       (`pg_isready -h <address> -p 5432`)
-15. Add a short design note to the pull request description, under
+16. Add a short design note to the pull request description, under
     **Anything the reviewer should look at closely?**:
     - Why the database isn't simply on `bukka-web-net` with a strong password
-    - Why `bukka-db-sg` uses a security group as the source instead of the
-      API server's IP address
+    - Why `bukka-db-allow-api` uses a service account as the source instead
+      of the API server's IP address or a network tag
     - What `sslmode=require` protects against
     - What value `Dish.photo_key` should hold for a photo (the key, a URL,
       or something else?) and why
 
 ### Submit
 
-16. Work on a branch called `buk-45-private-db-and-s3`, created from
+17. Work on a branch called `buk-45-private-db-and-storage`, created from
     `upstream/apprentice/<your-github-username>`.
-17. With Floci, `bukka-api-1` and `bukka-orders-db` all running, run
+18. With floci-gcp, `bukka-api-1` and `bukka-orders-db` all running, run
     `bash scripts/verify/buk-45.sh`. It writes
     `artifacts/buk-45-data-audit.txt`.
-18. Commit `infra/` and the audit file, push, and open a pull request into
+19. Commit `infra/` and the audit file, push, and open a pull request into
     `apprentice/<your-github-username>`, titled
-    `feat: move orders to a private database and menu photos to S3 (BUK-45)`.
+    `feat: move orders to a private database and menu photos to Cloud Storage (BUK-45)`.
 
 ## Definition of done
 
@@ -149,24 +154,24 @@ There are two halves, both on your machine, no AWS account and no bill:
 
 - **Why a separate database server?** The API can be restarted, replaced or
   run as three copies; the data must outlive all of that. Once they're
-  apart, each can be sized, backed up and secured for what it does. In AWS,
-  RDS runs this server for you (backups, patching, failover), but the
-  network rules are the same ones you set here.
+  apart, each can be sized, backed up and secured for what it does. In
+  Google Cloud, Cloud SQL runs this server for you (backups, patching,
+  failover), but the network rules are the same ones you set here.
 - **Why no published port?** `-p 5432:5432` would put the database on your
   machine's network, and in the cloud, on the internet. Most database
   breaches start with a database that was reachable and a weak password.
   Unreachable beats strong.
 - **Why `--internal`?** If someone does get into the database server, it
   can't download tools or send your customers' data anywhere. This is the
-  "no route to the internet" from the BUK-42 database subnets.
+  same idea as `bukka-db-deny-egress` in BUK-42.
 - **TLS on the official image:** it already contains a test certificate.
   Add these to the end of your `docker run` command, after the image name:
   ```
   -c ssl=on -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem \
   -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
   ```
-  In production you'd use a certificate from your own authority (RDS gives
-  you one), and `sslmode=verify-full` to check it.
+  In production you'd use a certificate from your own authority (Cloud SQL
+  gives you one), and `sslmode=verify-full` to check it.
 - **Passwords:** `openssl rand -base64 24 | tr -d '/+='` makes a good one.
   Keep it in your shell (`export BUKKA_DB_PASSWORD=...`) or a password
   manager. If it ever lands in a commit, it's leaked, even if you delete it
@@ -177,23 +182,26 @@ There are two halves, both on your machine, no AWS account and no bill:
   ```
   Find the database's address with
   `docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' bukka-orders-db`.
-- **Starting Floci** (a free, open-source AWS emulator: no account, no
-  token; the version is pinned so everyone gets the same behaviour):
+- **Why a service account as the source?** An IP address changes when the
+  API server is replaced, and anyone who can edit a VM can give it a network
+  tag. A service account is an identity: only VMs you allowed to run as
+  `bukka-api-server` get in. (Google Cloud doesn't let one rule mix tags and
+  service accounts, which is why the database gets its own service account
+  as the target.)
+- **Encryption:** Cloud Storage encrypts every object at rest with
+  Google-managed keys, with nothing to turn on. Customer-managed keys (Cloud
+  KMS) are the next step if a customer contract asks for them.
+- **Starting floci-gcp** (pinned, as in BUK-38):
   ```bash
-  docker run --rm -d --name floci -p 4566:4566 \
-    -v /var/run/docker.sock:/var/run/docker.sock floci/floci:2.5.0
+  docker run --rm -d --name floci-gcp -p 4588:4588 \
+    -v /var/run/docker.sock:/var/run/docker.sock floci/floci-gcp:nightly-11172026
   ```
-- **Pointing the AWS CLI at it:**
-  ```bash
-  export AWS_ENDPOINT_URL=http://localhost:4566
-  export AWS_ACCESS_KEY_ID=test
-  export AWS_SECRET_ACCESS_KEY=test
-  export AWS_DEFAULT_REGION=us-east-1
-  ```
+  Then, from the root of your bukka clone: `source scripts/floci-gcp.env`.
 - Useful commands: `docker network create --internal`,
   `docker network connect`, `docker volume ls`, `docker logs bukka-orders-db`,
-  `psql`, `aws ec2 authorize-security-group-ingress --source-group`,
-  `aws s3api put-public-access-block`, `aws s3api put-bucket-encryption`,
-  `aws s3 cp`, `aws s3 ls`.
+  `psql`, `gcloud compute firewall-rules create --source-service-accounts
+  --target-service-accounts`, `gcloud storage buckets update
+  --public-access-prevention --versioning`, `gcloud storage cp`,
+  `gcloud storage ls`.
 - Windows: run everything from WSL. If Docker won't run on your machine, use
   a GitHub Codespace on your fork: Docker is already installed there.

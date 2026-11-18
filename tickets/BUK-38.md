@@ -7,7 +7,7 @@
 | **Epic** | BUK-2 Move to the cloud |
 | **Month** | 2 |
 | **Sprint** | 5 |
-| **Skills** | aws-iam, aws-s3, cloud-costs |
+| **Skills** | gcp-iam, gcp-storage, cloud-costs |
 | **Reporter** | Hussein Alamutu (Product Manager & Lead DevOps Engineer) |
 | **Assignee** | You |
 | **Due** | End of sprint 5 |
@@ -16,87 +16,103 @@
 
 ### Why this matters
 
-We're starting the move to AWS this month. Last week a security review found
-an AWS access key pasted into a `.env` file on bukka-prod-1 so the API could
-read menu photos. Anyone who gets on that box, or sees that file in a
-screenshot, can use that key from anywhere, and it never expires. A leak like
-that is the kind of headline that ends a food startup. Finance has also asked
-for one promise: no surprise AWS bills.
+We're starting the move to Google Cloud this month. Last week a security
+review found a service account key, a JSON file with a private key in it,
+copied onto bukka-prod-1 so the API could read menu photos. Anyone who gets
+on that box, or sees that file in a screenshot, can use that key from
+anywhere, and it never expires. A leak like that is the kind of headline
+that ends a food startup. Finance has also asked for one promise: no
+surprise cloud bills.
 
 ### What I need from you
 
-- No keys on the API server at all: it gets an IAM role through an instance
-  profile.
-- The role can **read** the menu photos bucket and nothing else.
+- No keys on the API server at all: it runs as a service account attached
+  to the VM.
+- That service account can **read** the menu photos bucket and nothing
+  else.
 - Only web traffic gets in from the internet; SSH is closed or limited to
   your own IP.
-- A billing alarm that tells us the moment we spend anything.
+- A budget that tells us the moment we spend anything.
 
 — Hussein Alamutu, Product Manager & Lead DevOps Engineer
 
 ## Acceptance criteria
 
-All of this runs on **Floci**, AWS simulated in Docker on your machine.
-No AWS account, no credit card, no bill. See the Notes for setup.
+All of this runs on **floci-gcp**, Google Cloud simulated in Docker on your
+machine. No Google account, no credit card, no bill. See the Notes for
+setup.
 
 ### The bucket
 
-1. Create an S3 bucket called `bukka-menu-photos-<your-github-username>`
-   (all lowercase). It can be empty for now. BUK-45 locks it down and fills
-   it.
+1. Create a Cloud Storage bucket called
+   `bukka-menu-photos-<your-github-username>` (all lowercase) in
+   `us-central1`, with uniform bucket-level access. It can be empty for now.
+   BUK-45 locks it down and fills it.
 
 ### An identity for the server, not a key
 
-2. Create an IAM role called `bukka-api-server-role` that only EC2 can use
-   (its trust policy allows `ec2.amazonaws.com` and nothing else).
-3. Attach a policy to the role that allows **only** reading from your
-   bucket:
-   - `s3:GetObject` on `arn:aws:s3:::bukka-menu-photos-<username>/*`
-   - `s3:ListBucket` on `arn:aws:s3:::bukka-menu-photos-<username>`
-   - No `*` actions, no `*` resources, no write or delete actions.
-4. Create an instance profile called `bukka-api-server-profile` and add the
-   role to it.
+2. Create a service account called `bukka-api-server`.
+3. Give it `roles/storage.objectViewer` **on your bucket only** (a binding
+   on the bucket, not on the project):
+   - No project-wide roles for the service account. A role on the project
+     reaches every bucket, now and later.
+   - No other roles on your bucket (no `objectAdmin`, no `objectCreator`),
+     and nothing on any other bucket.
+   - The bucket isn't public: no `allUsers` or `allAuthenticatedUsers`.
+4. The service account has **no keys**, and nobody can act as it:
+   nobody holds `roles/iam.serviceAccountTokenCreator`,
+   `roles/iam.serviceAccountKeyAdmin` or `roles/iam.serviceAccountUser` on
+   it.
 
 ### The API server
 
-5. Create a security group called `bukka-web-sg`:
-   - TCP `80` and `443` open to `0.0.0.0/0`, so customers can reach the site.
+5. A new Google Cloud project comes with a network called `default`.
+   floci-gcp starts empty, so create it yourself: a custom-mode network
+   `default` with one subnet, also called `default`, `10.128.0.0/20` in
+   `us-central1`.
+6. Create a firewall rule called `bukka-allow-web` on `default`:
+   - ingress, TCP `80` and `443` from `0.0.0.0/0`, for VMs with the network
+     tag `bukka-web`.
    - TCP `22` (SSH) either not open at all, or open **only** to your own IP
      as a `/32`. Never to `0.0.0.0/0`.
-   - No other inbound rules.
-6. Launch one EC2 instance (`t3.micro`) tagged `Name=bukka-api-1`, with
-   `bukka-web-sg` and the `bukka-api-server-profile` instance profile
-   attached.
-7. **No access keys anywhere.** Nothing starting with `AKIA` in your user
-   data, your scripts or your commits.
+   - No other inbound rules reach the API server. A rule with no target
+     tags applies to every VM in the network.
+7. Create one VM, `bukka-api-1`: `e2-micro` in `us-central1-a`, on the
+   `default` subnet, with the network tag `bukka-web`, running as
+   `bukka-api-server` with the `cloud-platform` scope, booting
+   `projects/debian-cloud/global/images/family/debian-12`.
+8. **No keys anywhere.** No service account key files, no private keys and
+   no API keys in your startup script, your scripts or your commits.
 
 ### No surprise bills
 
-8. Create an SNS topic called `bukka-billing-alerts` with your email
-   subscribed to it.
-9. Create a CloudWatch alarm called `bukka-spend-above-zero` on the
-   `AWS/Billing` `EstimatedCharges` metric (currency `USD`) that fires when
-   the charge goes above `0` and notifies `bukka-billing-alerts`.
+9. Create a Pub/Sub topic called `bukka-billing-alerts` and a subscription
+   on it (`bukka-billing-alerts-oncall`), so someone receives the alerts.
+10. Create a budget called `bukka-spend-above-zero` on floci-gcp's billing
+    account: `1` USD a month, with a threshold rule at `0.01` (1%, so the
+    first alert comes at the first cent), that notifies
+    `bukka-billing-alerts`.
 
 ### Write it down
 
-10. Save every command you ran, in order, in `infra/cli/buk-38.sh`, so you
-    (or a teammate) can rebuild all of this on a fresh Floci with one
-    command. You will need this in BUK-42 and BUK-45.
-11. In your pull request description, add a short design note under
+11. Save every command you ran, in order, in `infra/cli/buk-38.sh`, so you
+    (or a teammate) can rebuild all of this on a fresh floci-gcp with one
+    command. You will need this in BUK-45.
+12. In your pull request description, add a short design note under
     **Anything the reviewer should look at closely?** (a few sentences each):
-    - Why an instance profile is safer than a key in a `.env` file
-    - What an attacker on the server could and couldn't do with this role
+    - Why a service account on the VM is safer than a key file on the VM
+    - What an attacker on the server could and couldn't do as
+      `bukka-api-server`
     - Why SSH is closed (or limited to your IP)
 
 ### Submit
 
-12. Work on a branch called `buk-38-api-server-photo-access`, created from
+13. Work on a branch called `buk-38-api-server-photo-access`, created from
     `upstream/apprentice/<your-github-username>`.
-13. With Floci running and your resources created, run
+14. With floci-gcp running and your resources created, run
     `bash scripts/verify/buk-38.sh`. It writes
     `artifacts/buk-38-iam-audit.txt`.
-14. Commit the audit file and `infra/cli/buk-38.sh`, push, and open a pull
+15. Commit the audit file and `infra/cli/buk-38.sh`, push, and open a pull
     request into `apprentice/<your-github-username>`, titled
     `feat: give the API server read-only access to menu photos (BUK-38)`.
 
@@ -109,42 +125,66 @@ No AWS account, no credit card, no bill. See the Notes for setup.
 
 ## Notes
 
-- **Why a role instead of a key?** A role gives the server short-lived
-  credentials that AWS rotates for it every few hours. There is nothing to
-  leak in a file, and if the server is retired the access goes with it.
-- **Why so narrow?** If someone breaks into the API server, the role decides
-  how much damage they can do. Read-only on one bucket means the worst case
-  is someone looking at pictures of jollof, not deleting them or reading the
-  rest of the account. This is called least privilege.
-- **Why us-east-1?** AWS only publishes billing metrics in `us-east-1`, so
-  we keep everything in that one region for now.
-- **Starting Floci** (a free, open-source AWS emulator: no account, no
-  token; the version is pinned so everyone gets the same behaviour):
+- **Why a service account instead of a key?** A VM that runs as a service
+  account gets short-lived tokens from Google's metadata server, refreshed
+  for it every hour. There is nothing to leak in a file, and when the VM is
+  deleted the access goes with it.
+- **Why so narrow?** If someone breaks into the API server, the service
+  account decides how much damage they can do. Read-only on one bucket
+  means the worst case is someone looking at pictures of jollof, not
+  deleting them or reading the rest of the project. This is called least
+  privilege. Granting on the bucket rather than the project is what keeps it
+  to one bucket.
+- **Why does "nobody can act as it" matter?** Anyone with Token Creator on
+  the service account can mint its tokens from their laptop, and anyone with
+  Key Admin can make it a key. That is the leaked-key problem by another
+  route.
+- **Starting floci-gcp** (a free, open-source Google Cloud emulator: no
+  account, no token). The image is pinned so everyone gets the same
+  behaviour; it's a dated build because the budgets API isn't in a release
+  yet:
   ```bash
-  docker run --rm -d --name floci -p 4566:4566 \
-    -v /var/run/docker.sock:/var/run/docker.sock floci/floci:2.5.0
+  docker run --rm -d --name floci-gcp -p 4588:4588 \
+    -v /var/run/docker.sock:/var/run/docker.sock floci/floci-gcp:nightly-11172026
   ```
-- **Pointing the AWS CLI at it:**
+- **Pointing gcloud at it:** install the
+  [gcloud CLI](https://cloud.google.com/sdk/docs/install), then, from the
+  root of your bukka clone:
   ```bash
-  export AWS_ENDPOINT_URL=http://localhost:4566
-  export AWS_ACCESS_KEY_ID=test
-  export AWS_SECRET_ACCESS_KEY=test
-  export AWS_DEFAULT_REGION=us-east-1
-  aws sts get-caller-identity   # should answer from Floci
+  source scripts/floci-gcp.env
+  gcloud iam service-accounts list   # answers from floci-gcp: an empty list
   ```
-  `test` / `test` are dummy keys: Floci accepts any. They live in your shell only,
-  never on the server and never in the repo.
-- Floci forgets everything when it stops. That's why you save your
+  It sets the project (`bukka-prod`), a dummy access token and one endpoint
+  per API, in this shell only. The token is a placeholder floci-gcp accepts:
+  it isn't a secret and works nowhere else. Never `gcloud auth login` for
+  these labs.
+- **The budget:** `gcloud billing budgets create` can't be pointed at
+  floci-gcp, so send the same request to the REST API with `curl`:
+  ```bash
+  curl -s -X POST "$FLOCI_GCP/v1/billingAccounts/$BUKKA_BILLING_ACCOUNT/budgets" \
+    -H 'Content-Type: application/json' -d @budget.json
+  ```
+  `budget.json` holds `displayName`, `amount.specifiedAmount`
+  (`currencyCode`, `units`), `thresholdRules` and `notificationsRule`
+  (`pubsubTopic` as `projects/bukka-prod/topics/bukka-billing-alerts`,
+  `schemaVersion` `"1.0"`). See the Budget API reference for the shape. On
+  real Google Cloud the gcloud command does the same.
+- floci-gcp forgets everything when it stops. That's why you save your
   commands in `infra/cli/buk-38.sh`: run it again and you're back. Run it on
-  a fresh Floci: running it twice launches a second `bukka-api-1`, and
-  the verify script expects exactly one.
-- Floci accepts the AMI IDs it lists with `aws ec2 describe-images`.
-  The instance is simulated, so you won't SSH into it. The verify script
-  checks how it's configured.
-- Useful commands: `aws iam create-role`, `aws iam put-role-policy`,
-  `aws iam create-instance-profile`, `aws iam add-role-to-instance-profile`,
-  `aws ec2 create-security-group`, `aws ec2 authorize-security-group-ingress`,
-  `aws ec2 run-instances --iam-instance-profile`, `aws sns create-topic`,
-  `aws cloudwatch put-metric-alarm`.
+  a fresh floci-gcp: names in a project are unique, so a second run stops
+  at the first thing that already exists.
+- The VM is simulated, so you won't SSH into it. The verify script checks
+  how it's configured.
+- Useful commands: `gcloud storage buckets create`,
+  `gcloud iam service-accounts create`,
+  `gcloud storage buckets add-iam-policy-binding`,
+  `gcloud storage buckets get-iam-policy`,
+  `gcloud projects get-iam-policy bukka-prod`,
+  `gcloud iam service-accounts keys list`,
+  `gcloud compute networks create --subnet-mode=custom`,
+  `gcloud compute networks subnets create`,
+  `gcloud compute firewall-rules create`,
+  `gcloud compute instances create --service-account --scopes --tags`,
+  `gcloud pubsub topics create`, `gcloud pubsub subscriptions create`.
 - If Docker won't run on your machine, use a GitHub Codespace on your fork:
   Docker is already installed there.

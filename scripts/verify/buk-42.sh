@@ -81,7 +81,7 @@ mkdir -p artifacts
 echo
 if [ "$FAILS" -eq 0 ]; then
   echo "All checks passed. Wrote $OUT."
-  echo "Next: git add $S $OUT && git commit -m \"feat: create production VPC with public and private subnets (BUK-42)\""
+  echo "Next: git add $S $OUT && git commit -m \"feat: create production VPC with web and database subnets (BUK-42)\""
   exit 0
 else
   echo "$FAILS check(s) failed. Fix the items marked ✗ and run this again."

@@ -37,7 +37,7 @@ class Dish(Base):
     # Money is stored in kobo (1 naira = 100 kobo) as an integer, never a float.
     price_kobo: Mapped[int] = mapped_column(Integer)
     emoji: Mapped[str] = mapped_column(String(16), default="🍲")
-    # Filled in once menu photos move to object storage (S3).
+    # Filled in once menu photos move to object storage (Cloud Storage).
     photo_key: Mapped[str] = mapped_column(String(255), default="")
 
     restaurant: Mapped[Restaurant] = relationship(back_populates="dishes")
