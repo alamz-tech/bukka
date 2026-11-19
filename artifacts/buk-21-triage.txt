@@ -1,0 +1,15 @@
+# BUK-21 triage audit
+generated_at: 2026-11-19T13:16:15Z
+github_user: helenefebe
+branch: buk-21-menu-page-fails
+fails: 0
+
+PASS  bukka-prod-1 is running
+PASS  Customers can load restaurants from http://localhost:18080
+PASS  The API listens on all interfaces on port 8080
+PASS  Firewall still blocks by default (INPUT policy DROP)
+PASS  Firewall allows TCP 8080
+PASS  The server resolves DNS names again
+PASS  Runbook runbooks/menu-page-fails.md has all four sections
+PASS  On a BUK-21 branch (buk-21-menu-page-fails)
+PASS  GitHub recognises your SSH key as @helenefebe
