@@ -10,7 +10,6 @@ Users report the restaurant menu page is not loading. The symptoms can be:
 1. **DNS:** `dig google.com` – (Healthy: returns an IP. Broken: times out or returns no answer).  
 2. **API Listener:** `ss -tulpn | grep 8080` – (Healthy: listens on `0.0.0.0:8080`. Broken: listens on `127.0.0.1:8080` or not at all).
 3. **Firewall (inside container):** `sudo iptables -L INPUT -n -v` – (Healthy: an ACCEPT rule for TCP 8080 exists while policy remains DROP).  
-4. **Firewall (host level):** From the **host VM**, run `sudo iptables -L INPUT -n -v` – (Healthy: port 18080 is allowed, but the default DROP policy is intact).  
 
 ## Fix
 **Inside the container (`bukka-prod-1`):**
@@ -18,9 +17,6 @@ Users report the restaurant menu page is not loading. The symptoms can be:
 2. **Restart API:** `sudo bukka-api restart`
 3. **Fix DNS (temporary):** `echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf`
 4. **Open Firewall (inside container):** `sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT`  
-
-**On the host VM:**
-5. **Open Host Firewall:** `sudo iptables -A INPUT -p tcp --dport 18080 -j ACCEPT` (Docker often creates its own NAT rules; verify the host firewall is not blocking the mapped port).  
 
 ## Why it happens
 A recent security policy change broke multiple dependencies simultaneously. It altered the API environment to bind only to localhost (`127.0.0.1`), preventing external traffic. It failed to add an inbound firewall rule for the required application port, and pointed the server's DNS resolver to an unreachable internal IP (`192.0.2.53`).
