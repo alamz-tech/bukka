@@ -1,5 +1,5 @@
 # BUK-21 triage audit
-generated_at: 2026-11-19T02:09:01Z
+generated_at: 2026-11-22T21:05:35Z
 github_user: Destwule
 branch: buk-21-menu-page-fails
 fails: 0
