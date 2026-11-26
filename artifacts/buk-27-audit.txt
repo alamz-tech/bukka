@@ -1,0 +1,22 @@
+# BUK-27 audit
+generated_at: 2026-11-26T16:23:55Z
+github_user: Todjolayemi
+branch: buk-27-systemd-nginx
+unit_sha256: ff0e1f809140dab1867fa11c895adfdb26059aee46e1d03f0cb6e0c57b9f04c4
+nginx_sha256: bbf35001b8a7ba42d6d4d07729f254e787c710590020f8023a54b9a688d0797b
+fails: 0
+
+PASS  bukka-web-1 is running
+PASS  deploy/systemd/bukka-api.service matches the installed unit
+PASS  deploy/nginx/bukka.conf is the config Nginx loads (/etc/nginx/sites-enabled/bukka.conf)
+PASS  bukka-api is enabled and running
+PASS  The API runs as the bukka service account
+PASS  Restarts automatically (Restart=always)
+PASS  The API listens on 127.0.0.1:8080 only
+PASS  Customers get the web app and the API through Nginx on port 80
+PASS  The API sees the customer's address (forwarded headers)
+PASS  Comes back by itself after being killed
+PASS  API down → 502 with the kitchen_closed JSON
+PASS  Everything comes back after a server restart
+PASS  On a BUK-27 branch (buk-27-systemd-nginx)
+PASS  GitHub recognises your SSH key as @Todjolayemi

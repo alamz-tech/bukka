@@ -1,0 +1,17 @@
+[Unit]
+Description=Bukka API
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=bukka
+Group=bukka
+WorkingDirectory=/var/lib/bukka
+EnvironmentFile=/etc/bukka/api.env
+ExecStart=/opt/bukka/venv/bin/python -m bukka_api.main
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
