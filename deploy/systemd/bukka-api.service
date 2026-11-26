@@ -1,0 +1,13 @@
+[Unit]
+Description=Bukka API
+After=network.target
+
+[Service]
+User=bukka
+EnvironmentFile=/etc/bukka/api.env
+ExecStart=/opt/bukka/venv/bin/python -m bukka_api.main
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
